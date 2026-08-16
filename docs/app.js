@@ -1,3 +1,5 @@
+import { quickAnalyzeText } from "./quick-analysis.js?v=4";
+
 const API_BASE_URL = "https://zhipu-api.vercel.app/api";
 
 const state = {
@@ -8,10 +10,12 @@ const state = {
   analysis: null,
   enrichment: null,
   error: "",
+  analysisStatus: "idle",
   loadingText: "AI 正在找你",
 };
 
 const stage = document.querySelector("#stage");
+let reviewSequence = 0;
 
 const DIMENSIONS = [
   ["personal_anchor", "个人锚点"],
@@ -188,7 +192,7 @@ function renderInput() {
       </div>
       ${state.error ? `<p class="error-message" role="alert">${escapeHtml(state.error)}</p>` : ""}
       <button class="primary-button" type="button" ${state.text.trim() ? "" : "disabled"}><span>开始检测</span><i>→</i></button>
-      <p class="privacy-note">文字会发送给 AI 分析，本站不保存正文。</p>
+      <p class="privacy-note">先在本机快速初筛，再发送给 AI 复核；本站不保存正文。</p>
     </div>`;
 
   const textarea = stage.querySelector("textarea");
@@ -216,18 +220,35 @@ async function detect() {
   }
   state.submittedText = clean;
   state.error = "";
-  state.loadingText = "AI 正在找你";
-  state.phase = "loading";
+  state.analysis = quickAnalyzeText(clean);
+  state.analysisStatus = "reviewing";
+  state.phase = "result";
   render();
+  const requestId = ++reviewSequence;
+  void reviewAnalysis(clean, requestId);
+}
 
+async function reviewAnalysis(text, requestId) {
   try {
-    state.analysis = await apiRequest("/analyze", { text: clean });
-    state.phase = "result";
+    const analysis = await apiRequest("/analyze", { text });
+    if (requestId !== reviewSequence) return;
+    state.analysis = analysis;
+    state.analysisStatus = "complete";
   } catch (error) {
+    if (requestId !== reviewSequence) return;
+    state.analysisStatus = "failed";
     state.error = error.message;
-    state.phase = "input";
   }
-  render();
+  if (state.phase === "result") renderResult();
+}
+
+function retryReview() {
+  if (state.analysisStatus === "reviewing") return;
+  state.error = "";
+  state.analysisStatus = "reviewing";
+  renderResult();
+  const requestId = ++reviewSequence;
+  void reviewAnalysis(state.submittedText, requestId);
 }
 
 function renderLoading() {
@@ -247,11 +268,23 @@ function heatmapHtml() {
     .join("");
 }
 
+function reviewStatusHtml() {
+  if (state.analysisStatus === "complete") {
+    return '<div class="review-status complete"><i>✓</i><span><strong>AI 复核完成</strong>分数和追问已更新</span></div>';
+  }
+  if (state.analysisStatus === "failed") {
+    return `<div class="review-status failed"><i>!</i><span><strong>当前显示快速初筛</strong>免费 AI 暂时排队，可稍后重试</span><button id="retry-review" type="button">重新复核</button></div>`;
+  }
+  return '<div class="review-status reviewing"><i></i><span><strong>快速初筛已完成</strong>AI 正在后台复核，不用停在等待页</span></div>';
+}
+
 function renderResult() {
+  const isReviewing = state.analysisStatus === "reviewing";
   stage.innerHTML = `
     <div class="stage result-stage" aria-live="polite">
+      ${reviewStatusHtml()}
       <section class="score-block score-card">
-        <span>含人量</span>
+        <span>含人量 · ${state.analysisStatus === "complete" ? "AI 复核" : "快速初筛"}</span>
         <div class="score-value"><strong>${state.analysis.score}</strong><i>/ 100</i></div>
         <p>${escapeHtml(state.analysis.label)}</p>
         ${state.analysis.summary ? `<small>${escapeHtml(state.analysis.summary)}</small>` : ""}
@@ -267,13 +300,16 @@ function renderResult() {
           <span><i class="dot generic-dot"></i>谁都能说</span>
         </div>
       </section>
-      <button class="primary-button" id="increase" type="button"><span>增加含人量</span><i>→</i></button>
+      <button class="primary-button" id="increase" type="button" ${isReviewing ? "disabled" : ""}><span>${isReviewing ? "AI 复核后可增加" : "增加含人量"}</span><i>→</i></button>
       <button class="text-button" id="reset" type="button">再测一段</button>
       <p class="disclaimer">AI 动态评估，不是生成率或事实核验。</p>
     </div>`;
   drawRadar(stage.querySelector(".radar-canvas"), state.analysis.dimensions);
   bindSegmentReasons();
+  stage.querySelector("#retry-review")?.addEventListener("click", retryReview);
   stage.querySelector("#increase").addEventListener("click", () => {
+    if (state.analysisStatus === "reviewing") return;
+    state.error = "";
     state.phase = "questions";
     render();
   });
@@ -359,6 +395,7 @@ function renderImproved() {
 }
 
 function reset() {
+  reviewSequence += 1;
   state.phase = "input";
   state.text = "";
   state.submittedText = "";
@@ -366,6 +403,7 @@ function reset() {
   state.analysis = null;
   state.enrichment = null;
   state.error = "";
+  state.analysisStatus = "idle";
   render();
 }
 

@@ -39,6 +39,17 @@ textarea::placeholder { color: #a69c90; }
 .privacy-note, .disclaimer { margin: 12px 0 0; color: var(--muted); font-size: 10px; line-height: 1.55; text-align: center; }
 .error-message { margin: 13px 4px 0; color: #ad4126; font-size: 12px; line-height: 1.55; text-align: center; }
 
+.review-status { display: flex; min-height: 58px; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 13px; color: var(--muted); background: rgba(255, 250, 240, 0.72); font-size: 10px; line-height: 1.45; }
+.review-status > i { display: grid; width: 25px; height: 25px; flex: 0 0 25px; place-items: center; border: 1px solid currentColor; border-radius: 50%; color: var(--human); font-family: Georgia, serif; font-size: 12px; font-style: normal; }
+.review-status.reviewing > i { border-right-color: transparent; animation: review-spin 0.8s linear infinite; }
+.review-status span { min-width: 0; }
+.review-status strong { display: block; color: var(--ink); font-size: 11px; font-weight: 650; }
+.review-status.complete { border-color: rgba(68, 122, 80, 0.22); background: rgba(68, 122, 80, 0.06); }
+.review-status.complete > i { color: #477a50; }
+.review-status.failed { border-color: rgba(214, 160, 76, 0.35); background: rgba(214, 160, 76, 0.08); }
+.review-status button { margin-left: auto; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--paper-light); font-size: 10px; white-space: nowrap; }
+@keyframes review-spin { to { transform: rotate(360deg); } }
+
 .loading-stage { min-height: 350px; display: grid; place-content: center; gap: 20px; text-align: center; }
 .loading-stage p { margin: 0; color: var(--muted); font-family: "Songti SC", "STSong", serif; letter-spacing: 0.12em; }
 .scanner { position: relative; width: 72px; height: 72px; margin: 0 auto; border: 1px solid var(--line); border-radius: 50%; overflow: hidden; background: rgba(255, 250, 240, 0.55); }

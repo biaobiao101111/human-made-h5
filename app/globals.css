@@ -127,7 +127,7 @@ textarea:focus-visible { outline: 2px solid rgba(234, 91, 53, 0.55); outline-off
 
 .result-stage { margin-top: 34px; }
 .score-block { text-align: center; }
-.score-block span { color: var(--muted); font-size: 12px; letter-spacing: 0.12em; }
+.score-block > span { color: var(--muted); font-size: 12px; letter-spacing: 0.12em; }
 
 .score-block strong {
   display: block;
@@ -140,6 +140,7 @@ textarea:focus-visible { outline: 2px solid rgba(234, 91, 53, 0.55); outline-off
 }
 
 .score-block p { margin: 8px 0 24px; font-family: "Songti SC", "STSong", serif; font-size: 18px; }
+.score-block small { display: block; max-width: 310px; margin: -14px auto 22px; color: var(--muted); font-size: 12px; font-weight: 400; line-height: 1.65; }
 .heatmap { padding: 20px 18px 16px; }
 
 .heatmap-copy {
@@ -169,6 +170,8 @@ textarea:focus-visible { outline: 2px solid rgba(234, 91, 53, 0.55); outline-off
 .potential-dot { background: var(--amber); }
 .generic-dot { background: #aaa49d; }
 .disclaimer { margin: 14px 0 0; color: var(--muted); font-size: 11px; text-align: center; }
+.privacy-note { margin: 11px 0 0; color: var(--muted); font-size: 10px; text-align: center; }
+.error-message { margin: 13px 4px 0; color: #b74428; font-size: 12px; line-height: 1.55; text-align: center; }
 
 .text-button {
   display: block;
@@ -249,6 +252,7 @@ textarea:focus-visible { outline: 2px solid rgba(234, 91, 53, 0.55); outline-off
 .score-change del { color: #aaa198; font-family: Georgia, serif; font-size: 27px; text-decoration-thickness: 1px; }
 .score-change strong { display: inline; }
 .original-copy { color: #8d867d; }
+.revised-copy { color: var(--ink); white-space: pre-wrap; }
 
 .added-copy {
   margin-top: 18px;

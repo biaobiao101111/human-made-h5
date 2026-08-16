@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const API_BASE_URL = "https://human-made-ai.WORKERS_SUBDOMAIN.workers.dev";
+const API_BASE_URL = "https://zhipu-api.vercel.app/api";
 
 type Segment = { text: string; level: "human" | "potential" | "generic"; reason: string };
 type Question = { question: string; placeholder: string; target: string };

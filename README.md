@@ -36,6 +36,7 @@ node --check zhipu-api/lib/human-made.js
 
 - https://github.com/biaobiao101111/human-made-h5
 - https://biaobiao101111.github.io/human-made-h5/
+- https://zhipu-api.vercel.app/api/health
 
 AI 后端以 `zhipu-api/` 为 Vercel 项目根目录，环境变量名称固定为：
 
@@ -43,4 +44,4 @@ AI 后端以 `zhipu-api/` 为 Vercel 项目根目录，环境变量名称固定�
 ZHIPU_API_KEY
 ```
 
-真实密钥只在 Vercel 控制台填写，不能写入源码或提交到 GitHub。后端部署后，把 Vercel 地址写入 `docs/app.js` 与 `app/page.tsx` 的 `API_BASE_URL`，完成真实调用验证后再合并到 `main`。当前公开页在后端实测通过前继续保留原演示版本，避免发布不可用页面。
+真实密钥只在 Vercel 控制台填写，不能写入源码或提交到 GitHub。线上后端已完成真实调用验证，前端通过 `https://zhipu-api.vercel.app/api` 请求服务。免费模型短时间连续调用可能返回 429，页面会提示用户稍后再试。

@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://human-made-ai.WORKERS_SUBDOMAIN.workers.dev";
+const API_BASE_URL = "https://zhipu-api.vercel.app/api";
 
 const state = {
   phase: "input",

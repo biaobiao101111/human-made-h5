@@ -17,9 +17,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .phone-page { width: min(100%, 430px); min-height: 100svh; margin: 0 auto; padding: max(26px, env(safe-area-inset-top)) 18px max(32px, env(safe-area-inset-bottom)); overflow: hidden; }
 
 .brand { margin-top: clamp(8px, 2.5svh, 28px); text-align: center; }
-.puqi-mark { display: inline-flex; align-items: stretch; margin-bottom: 18px; overflow: hidden; border: 1px solid rgba(23, 21, 18, 0.72); border-radius: 4px; color: var(--ink); font-size: 9px; line-height: 22px; letter-spacing: 0.08em; }
-.puqi-mark span { padding: 0 7px; color: var(--paper-light); background: var(--ink); font-family: "Songti SC", "STSong", serif; font-weight: 700; }
-.puqi-mark b { padding: 0 7px; font-weight: 600; }
+.puqi-mark { display: inline-block; margin-bottom: 18px; padding: 0 10px; border: 1px solid rgba(23, 21, 18, 0.58); border-radius: 4px; color: var(--ink); background: transparent; font-size: 9px; font-weight: 600; line-height: 24px; letter-spacing: 0.09em; }
 .brand h1 { margin: 0; font-family: "Songti SC", "STSong", serif; font-size: 34px; font-weight: 650; line-height: 1.15; letter-spacing: 0.08em; }
 .brand p { margin: 10px 0 0; color: var(--human); font-family: Georgia, "Times New Roman", serif; font-size: 17px; font-weight: 600; letter-spacing: 0.2em; }
 

@@ -12,8 +12,8 @@ export default async function handler(request, response) {
 
   try {
     const text = cleanText(request.body?.text, 2000);
-    if (text.length < 20) {
-      return sendJson(response, { error: "文字太短，请至少输入20个字。" }, 400, validation.origin);
+    if (text.length < 5) {
+      return sendJson(response, { error: "文字太短，请至少输入5个字。" }, 400, validation.origin);
     }
     const answers = Array.isArray(request.body?.answers)
       ? request.body.answers.slice(0, 2).map((answer) => cleanText(answer, 240))

@@ -195,7 +195,11 @@ export default function Home() {
 
   async function detect() {
     const clean = text.trim();
-    if (clean.length < 20) return;
+    if (!clean) return;
+    if (clean.length < 5) {
+      setError("再多写几个字，至少 5 个字才能判断。");
+      return;
+    }
     setSubmittedText(clean);
     setActiveSegment(null);
     setError("");
@@ -244,7 +248,7 @@ export default function Home() {
     <main className="app-shell">
       <section className="phone-page" aria-label="含人量检测">
         <header className="brand">
-          <div className="puqi-mark" aria-label="浦柒 AI 观察"><span>浦柒</span><b>AI观察</b></div>
+          <div className="puqi-mark" aria-label="浦柒 AI 观察">浦柒 AI观察</div>
           <h1>含人量检测</h1><p>HUMAN MADE</p>
         </header>
 
@@ -256,7 +260,7 @@ export default function Home() {
               <span className="count">{text.length}/2000</span>
             </div>
             {error && <p className="error-message" role="alert">{error}</p>}
-            <button type="button" className="primary-button" disabled={text.trim().length < 20} onClick={detect}><span>开始检测</span><i>→</i></button>
+            <button type="button" className="primary-button" disabled={!text.trim()} onClick={detect}><span>开始检测</span><i>→</i></button>
             <p className="privacy-note">文字会发送给 AI 分析，本站不保存正文。</p>
           </div>
         )}

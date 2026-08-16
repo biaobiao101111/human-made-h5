@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { quickAnalyzeText } from "../docs/quick-analysis.js";
 
 const API_BASE_URL = "https://zhipu-api.vercel.app/api";
 
@@ -30,7 +29,6 @@ type Enrichment = {
   revisedText: string;
 };
 type Phase = "input" | "loading" | "result" | "questions" | "improved";
-type AnalysisStatus = "idle" | "reviewing" | "complete" | "failed";
 
 const DIMENSIONS: Array<[keyof Dimensions, string]> = [
   ["personal_anchor", "个人锚点"],
@@ -188,10 +186,8 @@ export default function Home() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [enrichment, setEnrichment] = useState<Enrichment | null>(null);
   const [activeSegment, setActiveSegment] = useState<number | null>(null);
-  const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus>("idle");
   const [error, setError] = useState("");
   const [loadingText, setLoadingText] = useState("AI 正在找你");
-  const reviewSequence = useRef(0);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -207,32 +203,15 @@ export default function Home() {
     setSubmittedText(clean);
     setActiveSegment(null);
     setError("");
-    setAnalysis(quickAnalyzeText(clean) as Analysis);
-    setAnalysisStatus("reviewing");
-    setPhase("result");
-    const requestId = ++reviewSequence.current;
-    void reviewAnalysis(clean, requestId);
-  }
-
-  async function reviewAnalysis(content: string, requestId: number) {
+    setLoadingText("AI 正在找你");
+    setPhase("loading");
     try {
-      const reviewed = await apiRequest<Analysis>("/analyze", { text: content });
-      if (requestId !== reviewSequence.current) return;
-      setAnalysis(reviewed);
-      setAnalysisStatus("complete");
+      setAnalysis(await apiRequest<Analysis>("/analyze", { text: clean }));
+      setPhase("result");
     } catch (caught) {
-      if (requestId !== reviewSequence.current) return;
       setError(caught instanceof Error ? caught.message : "AI 暂时没有完成分析，请稍后再试。");
-      setAnalysisStatus("failed");
+      setPhase("input");
     }
-  }
-
-  function retryReview() {
-    if (analysisStatus === "reviewing") return;
-    setError("");
-    setAnalysisStatus("reviewing");
-    const requestId = ++reviewSequence.current;
-    void reviewAnalysis(submittedText, requestId);
   }
 
   async function enrichText() {
@@ -250,14 +229,12 @@ export default function Home() {
   }
 
   function reset() {
-    reviewSequence.current += 1;
     setText("");
     setSubmittedText("");
     setAnswers(["", ""]);
     setAnalysis(null);
     setEnrichment(null);
     setActiveSegment(null);
-    setAnalysisStatus("idle");
     setError("");
     setPhase("input");
   }
@@ -284,7 +261,7 @@ export default function Home() {
             </div>
             {error && <p className="error-message" role="alert">{error}</p>}
             <button type="button" className="primary-button" disabled={!text.trim()} onClick={detect}><span>开始检测</span><i>→</i></button>
-            <p className="privacy-note">先在本机快速初筛，再发送给 AI 复核；本站不保存正文。</p>
+            <p className="privacy-note">文字会发送给 AI 分析，本站不保存正文。</p>
           </div>
         )}
 
@@ -294,14 +271,7 @@ export default function Home() {
 
         {phase === "result" && analysis && (
           <div className="stage result-stage" aria-live="polite">
-            {analysisStatus === "complete" ? (
-              <div className="review-status complete"><i>✓</i><span><strong>AI 复核完成</strong>分数和追问已更新</span></div>
-            ) : analysisStatus === "failed" ? (
-              <div className="review-status failed"><i>!</i><span><strong>当前显示快速初筛</strong>免费 AI 暂时排队，可稍后重试</span><button type="button" onClick={retryReview}>重新复核</button></div>
-            ) : (
-              <div className="review-status reviewing"><i /><span><strong>快速初筛已完成</strong>AI 正在后台复核，不用停在等待页</span></div>
-            )}
-            <section className="score-block score-card"><span>含人量 · {analysisStatus === "complete" ? "AI 复核" : "快速初筛"}</span><div className="score-value"><strong>{analysis.score}</strong><i>/ 100</i></div><p>{analysis.label}</p>{analysis.summary && <small>{analysis.summary}</small>}</section>
+            <section className="score-block score-card"><span>含人量</span><div className="score-value"><strong>{analysis.score}</strong><i>/ 100</i></div><p>{analysis.label}</p>{analysis.summary && <small>{analysis.summary}</small>}</section>
             <RadarCard current={analysis.dimensions} />
             <section className="heatmap" aria-label="文字含人量高亮结果">
               <div className="section-heading compact"><div><span>文字热区</span><h2>哪句话里有你</h2></div><small>轻点查看</small></div>
@@ -309,7 +279,7 @@ export default function Home() {
               {activeSegment !== null && <div className="segment-reason"><span>AI 观察</span><p>{analysis.segments[activeSegment]?.reason || "这句话还可以补充更具体的个人信息。"}</p></div>}
               <div className="legend" aria-label="高亮说明"><span><i className="dot human-dot" />有你</span><span><i className="dot potential-dot" />可再具体</span><span><i className="dot generic-dot" />谁都能说</span></div>
             </section>
-            <button type="button" className="primary-button" disabled={analysisStatus === "reviewing"} onClick={() => { if (analysisStatus !== "reviewing") { setError(""); setPhase("questions"); } }}><span>{analysisStatus === "reviewing" ? "AI 复核后可增加" : "增加含人量"}</span><i>→</i></button>
+            <button type="button" className="primary-button" onClick={() => setPhase("questions")}><span>增加含人量</span><i>→</i></button>
             <button type="button" className="text-button" onClick={reset}>再测一段</button>
             <p className="disclaimer">AI 动态评估，不是生成率或事实核验。</p>
           </div>

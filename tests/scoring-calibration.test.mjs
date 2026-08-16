@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { calibrateDimensions, normalizeEvidence } from "../zhipu-api/lib/human-made.js";
+import { calibrateDimensions, normalizeEvidence, splitSentences } from "../zhipu-api/lib/human-made.js";
 
 const genericDiary = `8月16日 周六 晴
 
@@ -63,4 +63,8 @@ test("does not treat date and weather as concrete evidence", () => {
     concrete_anchors: ["8月16日 周六 晴"],
   });
   assert.deepEqual(evidence.concreteAnchors, []);
+});
+
+test("ignores blank lines when creating highlighted segments", () => {
+  assert.deepEqual(splitSentences("8月16日 周六 晴\n \n正文。"), ["8月16日 周六 晴", "正文。"]);
 });

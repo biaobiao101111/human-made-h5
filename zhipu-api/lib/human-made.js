@@ -98,7 +98,7 @@ export function cleanText(value, maxLength) {
 
 export function splitSentences(text) {
   const pieces = text.match(/[^。！？!?；;\n]+[。！？!?；;]?|\n/g)?.filter(Boolean) ?? [text];
-  const textPieces = pieces.filter((piece) => piece !== "\n");
+  const textPieces = pieces.filter((piece) => piece.trim());
   if (textPieces.length <= 40) return textPieces;
 
   const groups = [];

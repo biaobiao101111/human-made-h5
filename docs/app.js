@@ -187,7 +187,7 @@ function renderInput() {
         <span class="count">${state.text.length}/2000</span>
       </div>
       ${state.error ? `<p class="error-message" role="alert">${escapeHtml(state.error)}</p>` : ""}
-      <button class="primary-button" type="button" ${state.text.trim().length >= 20 ? "" : "disabled"}><span>开始检测</span><i>→</i></button>
+      <button class="primary-button" type="button" ${state.text.trim() ? "" : "disabled"}><span>开始检测</span><i>→</i></button>
       <p class="privacy-note">文字会发送给 AI 分析，本站不保存正文。</p>
     </div>`;
 
@@ -197,7 +197,7 @@ function renderInput() {
     state.text = event.target.value;
     state.error = "";
     stage.querySelector(".count").textContent = `${state.text.length}/2000`;
-    button.disabled = state.text.trim().length < 20;
+    button.disabled = !state.text.trim();
   });
   stage.querySelector("#clear")?.addEventListener("click", () => {
     state.text = "";
@@ -208,7 +208,12 @@ function renderInput() {
 
 async function detect() {
   const clean = state.text.trim();
-  if (clean.length < 20) return;
+  if (!clean) return;
+  if (clean.length < 5) {
+    state.error = "再多写几个字，至少 5 个字才能判断。";
+    render();
+    return;
+  }
   state.submittedText = clean;
   state.error = "";
   state.loadingText = "AI 正在找你";

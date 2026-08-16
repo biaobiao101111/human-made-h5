@@ -13,6 +13,14 @@ const state = {
 
 const stage = document.querySelector("#stage");
 
+const DIMENSIONS = [
+  ["personal_anchor", "个人锚点"],
+  ["specific_detail", "具体细节"],
+  ["judgment", "判断立场"],
+  ["choice", "选择取舍"],
+  ["voice", "表达指纹"],
+];
+
 function escapeHtml(value = "") {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -20,6 +28,132 @@ function escapeHtml(value = "") {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function dimensionValues(dimensions = {}) {
+  return DIMENSIONS.map(([key]) => Math.max(0, Math.min(100, Number(dimensions[key]) || 0)));
+}
+
+function dimensionRowsHtml(current, previous) {
+  return DIMENSIONS.map(([key, label]) => {
+    const value = Math.round(Number(current?.[key]) || 0);
+    if (!previous) {
+      return `<li><span>${label}</span><strong>${value}</strong></li>`;
+    }
+    const oldValue = Math.round(Number(previous?.[key]) || 0);
+    const delta = value - oldValue;
+    return `<li><span>${label}</span><div><del>${oldValue}</del><i>→</i><strong>${value}</strong>${delta > 0 ? `<em>+${delta}</em>` : ""}</div></li>`;
+  }).join("");
+}
+
+function radarCardHtml(current, previous) {
+  const description = DIMENSIONS.map(([key, label]) => `${label}${Math.round(Number(current?.[key]) || 0)}分`).join("，");
+  return `
+    <section class="radar-card" aria-label="含人量五维评分">
+      <div class="section-heading">
+        <div><span>五维画像</span><h2>${previous ? "补回了哪部分的你" : "哪里最像你"}</h2></div>
+        <div class="chart-legend">${previous ? '<i class="before-line"></i>补充前' : ""}<i class="after-line"></i>${previous ? "补充后" : "本次"}</div>
+      </div>
+      <canvas class="radar-canvas" role="img" aria-label="${escapeHtml(description)}"></canvas>
+      <ul class="dimension-list">${dimensionRowsHtml(current, previous)}</ul>
+    </section>`;
+}
+
+function drawRadar(canvas, current, previous) {
+  if (!canvas) return;
+  const width = Math.max(280, canvas.clientWidth || 320);
+  const height = 248;
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(width * ratio);
+  canvas.height = Math.round(height * ratio);
+  canvas.style.height = `${height}px`;
+
+  const context = canvas.getContext("2d");
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.clearRect(0, 0, width, height);
+
+  const centerX = width / 2;
+  const centerY = 122;
+  const radius = Math.min(82, width * 0.25);
+  const pointAt = (index, scale) => {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / DIMENSIONS.length;
+    return [centerX + Math.cos(angle) * radius * scale, centerY + Math.sin(angle) * radius * scale];
+  };
+
+  context.lineJoin = "round";
+  for (let level = 1; level <= 5; level += 1) {
+    context.beginPath();
+    DIMENSIONS.forEach((_, index) => {
+      const [x, y] = pointAt(index, level / 5);
+      if (index === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    });
+    context.closePath();
+    context.strokeStyle = level === 5 ? "rgba(63,54,46,.22)" : "rgba(63,54,46,.09)";
+    context.lineWidth = 1;
+    context.stroke();
+  }
+
+  DIMENSIONS.forEach(([, label], index) => {
+    const [x, y] = pointAt(index, 1);
+    context.beginPath();
+    context.moveTo(centerX, centerY);
+    context.lineTo(x, y);
+    context.strokeStyle = "rgba(63,54,46,.1)";
+    context.stroke();
+
+    const [labelX, labelY] = pointAt(index, 1.31);
+    context.fillStyle = "#71685f";
+    context.font = '12px -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif';
+    context.textAlign = labelX < centerX - 8 ? "right" : labelX > centerX + 8 ? "left" : "center";
+    context.textBaseline = labelY < centerY ? "bottom" : "top";
+    context.fillText(label, labelX, labelY);
+  });
+
+  const drawDataset = (dimensions, stroke, fill, dashed = false) => {
+    const values = dimensionValues(dimensions);
+    context.beginPath();
+    values.forEach((value, index) => {
+      const [x, y] = pointAt(index, value / 100);
+      if (index === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    });
+    context.closePath();
+    context.setLineDash(dashed ? [5, 4] : []);
+    context.strokeStyle = stroke;
+    context.fillStyle = fill;
+    context.lineWidth = dashed ? 1.5 : 2;
+    context.fill();
+    context.stroke();
+    context.setLineDash([]);
+    if (!dashed) {
+      values.forEach((value, index) => {
+        const [x, y] = pointAt(index, value / 100);
+        context.beginPath();
+        context.arc(x, y, 3, 0, Math.PI * 2);
+        context.fillStyle = "#d95835";
+        context.fill();
+      });
+    }
+  };
+
+  if (previous) drawDataset(previous, "rgba(113,104,95,.7)", "rgba(113,104,95,.035)", true);
+  drawDataset(current, "#d95835", "rgba(217,88,53,.16)");
+}
+
+function bindSegmentReasons() {
+  const reasonBox = stage.querySelector(".segment-reason");
+  if (!reasonBox) return;
+  stage.querySelectorAll("[data-segment]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.segment);
+      const segment = state.analysis.segments[index];
+      stage.querySelectorAll("[data-segment]").forEach((item) => item.setAttribute("aria-pressed", "false"));
+      button.setAttribute("aria-pressed", "true");
+      reasonBox.innerHTML = `<span>AI 观察</span><p>${escapeHtml(segment.reason || "这句话还可以补充更具体的个人信息。")}</p>`;
+      reasonBox.hidden = false;
+    });
+  });
 }
 
 async function apiRequest(path, payload) {
@@ -48,11 +182,12 @@ function renderInput() {
   stage.innerHTML = `
     <div class="stage stage-input">
       <div class="input-card">
+        <div class="input-meta"><span>你的文字</span>${state.text ? '<button id="clear" type="button">清空</button>' : ""}</div>
         <textarea maxlength="2000" placeholder="在这里粘贴一段文字……" aria-label="待检测文字">${escapeHtml(state.text)}</textarea>
         <span class="count">${state.text.length}/2000</span>
       </div>
       ${state.error ? `<p class="error-message" role="alert">${escapeHtml(state.error)}</p>` : ""}
-      <button class="primary-button" type="button" ${state.text.trim().length >= 20 ? "" : "disabled"}>开始检测</button>
+      <button class="primary-button" type="button" ${state.text.trim().length >= 20 ? "" : "disabled"}><span>开始检测</span><i>→</i></button>
       <p class="privacy-note">文字会发送给 AI 分析，本站不保存正文。</p>
     </div>`;
 
@@ -63,6 +198,10 @@ function renderInput() {
     state.error = "";
     stage.querySelector(".count").textContent = `${state.text.length}/2000`;
     button.disabled = state.text.trim().length < 20;
+  });
+  stage.querySelector("#clear")?.addEventListener("click", () => {
+    state.text = "";
+    render();
   });
   button.addEventListener("click", detect);
 }
@@ -97,8 +236,8 @@ function renderLoading() {
 function heatmapHtml() {
   return state.analysis.segments
     .map(
-      (segment) =>
-        `<span class="segment ${segment.level}" title="${escapeHtml(segment.reason)}">${escapeHtml(segment.text)}</span>`,
+      (segment, index) =>
+        `<button type="button" class="segment ${segment.level}" data-segment="${index}" aria-pressed="false">${escapeHtml(segment.text)}</button>`,
     )
     .join("");
 }
@@ -106,24 +245,29 @@ function heatmapHtml() {
 function renderResult() {
   stage.innerHTML = `
     <div class="stage result-stage" aria-live="polite">
-      <section class="score-block">
+      <section class="score-block score-card">
         <span>含人量</span>
-        <strong>${state.analysis.score}</strong>
+        <div class="score-value"><strong>${state.analysis.score}</strong><i>/ 100</i></div>
         <p>${escapeHtml(state.analysis.label)}</p>
         ${state.analysis.summary ? `<small>${escapeHtml(state.analysis.summary)}</small>` : ""}
       </section>
+      ${radarCardHtml(state.analysis.dimensions)}
       <section class="heatmap" aria-label="文字含人量高亮结果">
+        <div class="section-heading compact"><div><span>文字热区</span><h2>哪句话里有你</h2></div><small>轻点查看</small></div>
         <div class="heatmap-copy">${heatmapHtml()}</div>
+        <div class="segment-reason" hidden></div>
         <div class="legend" aria-label="高亮说明">
           <span><i class="dot human-dot"></i>有你</span>
           <span><i class="dot potential-dot"></i>可再具体</span>
           <span><i class="dot generic-dot"></i>谁都能说</span>
         </div>
       </section>
-      <button class="primary-button" id="increase" type="button">增加含人量</button>
+      <button class="primary-button" id="increase" type="button"><span>增加含人量</span><i>→</i></button>
       <button class="text-button" id="reset" type="button">再测一段</button>
       <p class="disclaimer">AI 动态评估，不是生成率或事实核验。</p>
     </div>`;
+  drawRadar(stage.querySelector(".radar-canvas"), state.analysis.dimensions);
+  bindSegmentReasons();
   stage.querySelector("#increase").addEventListener("click", () => {
     state.phase = "questions";
     render();
@@ -137,7 +281,7 @@ function renderQuestions() {
     <div class="stage question-stage">
       <div class="question-heading">
         <button type="button" class="back-button" aria-label="返回检测结果">←</button>
-        <div><h2>把你加回来</h2><p>${state.analysis.score} → ?</p></div>
+        <div><span>第 2 步 · 回答两个问题</span><h2>把你加回来</h2><p>${state.analysis.score} → ?</p></div>
       </div>
       ${questions
         .map(
@@ -149,7 +293,7 @@ function renderQuestions() {
         )
         .join("")}
       ${state.error ? `<p class="error-message" role="alert">${escapeHtml(state.error)}</p>` : ""}
-      <button class="primary-button" id="finish" type="button" ${state.answers.every((answer) => answer.trim()) ? "" : "disabled"}>把我加回来</button>
+      <button class="primary-button" id="finish" type="button" ${state.answers.every((answer) => answer.trim()) ? "" : "disabled"}><span>把我加回来</span><i>→</i></button>
     </div>`;
 
   const finish = stage.querySelector("#finish");
@@ -191,18 +335,21 @@ async function enrichText() {
 function renderImproved() {
   stage.innerHTML = `
     <div class="stage result-stage improved-stage" aria-live="polite">
-      <section class="score-block">
-        <span>含人量</span>
+      <section class="score-block score-card">
+        <span>含人量提升</span>
         <div class="score-change"><del>${state.analysis.score}</del><strong>${state.enrichment.score}</strong></div>
         <p>${escapeHtml(state.enrichment.label)}</p>
         ${state.enrichment.summary ? `<small>${escapeHtml(state.enrichment.summary)}</small>` : ""}
       </section>
+      ${radarCardHtml(state.enrichment.dimensions, state.analysis.dimensions)}
       <section class="heatmap" aria-label="增加含人量后的文字">
+        <div class="section-heading compact"><div><span>整理结果</span><h2>把你放回文字里</h2></div></div>
         <div class="heatmap-copy revised-copy">${escapeHtml(state.enrichment.revisedText)}</div>
       </section>
-      <button class="primary-button" id="reset" type="button">再测一段</button>
+      <button class="primary-button" id="reset" type="button"><span>再测一段</span><i>↻</i></button>
       <p class="disclaimer">只整理你提供的内容，不编造经历。</p>
     </div>`;
+  drawRadar(stage.querySelector(".radar-canvas"), state.enrichment.dimensions, state.analysis.dimensions);
   stage.querySelector("#reset").addEventListener("click", reset);
 }
 
@@ -218,11 +365,12 @@ function reset() {
 }
 
 function render() {
-  if (state.phase === "loading") return renderLoading();
-  if (state.phase === "result") return renderResult();
-  if (state.phase === "questions") return renderQuestions();
-  if (state.phase === "improved") return renderImproved();
-  return renderInput();
+  if (state.phase === "loading") renderLoading();
+  else if (state.phase === "result") renderResult();
+  else if (state.phase === "questions") renderQuestions();
+  else if (state.phase === "improved") renderImproved();
+  else renderInput();
+  window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
 }
 
 render();

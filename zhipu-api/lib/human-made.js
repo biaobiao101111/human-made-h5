@@ -1,4 +1,7 @@
-const MODEL = "glm-4.7-flash";
+const MODEL_ROUTES = [
+  { id: "glm-4-flash-250414", timeoutMs: 8_000 },
+  { id: "glm-4.7-flash", timeoutMs: 12_000 },
+];
 const ZHIPU_ENDPOINT = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
 
 export const ALLOWED_ORIGINS = new Set([
@@ -123,30 +126,40 @@ export async function runZhipu(messages, maxTokens) {
     throw error;
   }
 
-  const upstream = await fetch(ZHIPU_ENDPOINT, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      thinking: { type: "disabled" },
-      response_format: { type: "json_object" },
-      stream: false,
-      max_tokens: maxTokens,
-      temperature: 0.2,
-    }),
-  });
-
-  const data = await upstream.json().catch(() => ({}));
-  if (!upstream.ok) {
-    const error = new Error(`智谱接口返回 ${upstream.status}`);
-    error.statusCode = upstream.status === 429 ? 429 : 502;
-    throw error;
+  let lastStatus = 502;
+  for (const route of MODEL_ROUTES) {
+    try {
+      const upstream = await fetch(ZHIPU_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: route.id,
+          messages,
+          ...(route.id === "glm-4.7-flash" ? { thinking: { type: "disabled" } } : {}),
+          response_format: { type: "json_object" },
+          stream: false,
+          max_tokens: maxTokens,
+          temperature: 0.1,
+        }),
+        signal: AbortSignal.timeout(route.timeoutMs),
+      });
+      const data = await upstream.json().catch(() => ({}));
+      if (!upstream.ok) {
+        lastStatus = upstream.status === 429 ? 429 : 502;
+        continue;
+      }
+      return { data: parseModelContent(data), model: route.id };
+    } catch {
+      lastStatus = 502;
+    }
   }
-  return parseModelContent(data);
+
+  const error = new Error("智谱快速与兜底模型均未完成请求");
+  error.statusCode = lastStatus;
+  throw error;
 }
 
 function clampScore(value) {
@@ -276,7 +289,7 @@ function labelForScore(score) {
 export async function analyzeText(text) {
   const sentences = splitSentences(text);
   const numberedSentences = sentences.map((sentence, id) => ({ id, text: sentence }));
-  const modelData = await runZhipu(
+  const modelResponse = await runZhipu(
     [
       {
         role: "system",
@@ -294,8 +307,9 @@ evidence中的短语必须从原文逐字摘取。concrete_anchors排除日期�
       },
       { role: "user", content: `请分析以下编号句子：\n${JSON.stringify(numberedSentences)}` },
     ],
-    1800,
+    1100,
   );
+  const modelData = modelResponse.data;
 
   const calibration = calibrateDimensions(text, modelData.dimensions, modelData.evidence);
   const dimensions = calibration.dimensions;
@@ -343,12 +357,12 @@ evidence中的短语必须从原文逐字摘取。concrete_anchors排除日期�
       };
     }),
     questions,
-    model: MODEL,
+    model: modelResponse.model,
   };
 }
 
 export async function enrichText(text, answers) {
-  const modelData = await runZhipu(
+  const modelResponse = await runZhipu(
     [
       {
         role: "system",
@@ -361,8 +375,9 @@ export async function enrichText(text, answers) {
         content: `原文：\n${text}\n\n用户回答：\n${answers.map((answer, index) => `${index + 1}. ${answer}`).join("\n")}`,
       },
     ],
-    1600,
+    1200,
   );
+  const modelData = modelResponse.data;
 
   const revisedText = cleanText(modelData.revised_text, 3000);
   const calibration = calibrateDimensions(revisedText, modelData.dimensions, modelData.evidence);
@@ -377,7 +392,7 @@ export async function enrichText(text, answers) {
     usedDetails: Array.isArray(modelData.used_details)
       ? modelData.used_details.slice(0, 2).map((item) => cleanText(item, 120))
       : [],
-    model: MODEL,
+    model: modelResponse.model,
   };
 }
 

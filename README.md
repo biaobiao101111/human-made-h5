@@ -20,7 +20,7 @@
 - `docs/`：GitHub Pages 使用的纯静态手机端页面；
 - `zhipu-api/`：部署在 Vercel 的智谱 API 后端；
 - `app/`：React/Vinext 开发版本；
-- AI 模型：`glm-4.7-flash`；
+- AI 模型：优先使用 `glm-4-flash-250414`，超时或限流时自动切换 `glm-4.7-flash`；
 - API：`POST /api/analyze` 和 `POST /api/enrich`。
 
 浏览器中不存放 API Key。正文会经 Vercel 函数发送到智谱完成本次推理，应用代码不把正文写入数据库，响应也明确禁止缓存。

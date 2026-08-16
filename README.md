@@ -14,12 +14,12 @@
 ## 技术结构
 
 - `docs/`：GitHub Pages 使用的纯静态手机端页面；
-- `ai-worker/`：Cloudflare Worker + Workers AI 后端；
+- `zhipu-api/`：部署在 Vercel 的智谱 API 后端；
 - `app/`：React/Vinext 开发版本；
-- AI 模型：`@cf/meta/llama-3.1-8b-instruct-fast`；
-- API：`POST /analyze` 和 `POST /enrich`。
+- AI 模型：`glm-4.7-flash`；
+- API：`POST /api/analyze` 和 `POST /api/enrich`。
 
-浏览器中不存放 API Key。正文会发送到 Cloudflare Workers AI 完成本次推理，应用代码不把正文写入数据库，响应也明确禁止缓存。
+浏览器中不存放 API Key。正文会经 Vercel 函数发送到智谱完成本次推理，应用代码不把正文写入数据库，响应也明确禁止缓存。
 
 ## 本地验证
 
@@ -27,7 +27,7 @@
 npm install
 npm run lint
 npm test
-npx wrangler deploy --dry-run --config ai-worker/wrangler.jsonc
+node --check zhipu-api/lib/human-made.js
 ```
 
 ## 部署
@@ -37,11 +37,10 @@ npx wrangler deploy --dry-run --config ai-worker/wrangler.jsonc
 - https://github.com/biaobiao101111/human-made-h5
 - https://biaobiao101111.github.io/human-made-h5/
 
-AI 版部署顺序：
+AI 后端以 `zhipu-api/` 为 Vercel 项目根目录，环境变量名称固定为：
 
 ```bash
-npx wrangler login
-npx wrangler deploy --config ai-worker/wrangler.jsonc
+ZHIPU_API_KEY
 ```
 
-部署 Worker 后，把 Wrangler 返回的 `workers.dev` 地址写入 `docs/app.js` 与 `app/page.tsx` 的 `API_BASE_URL`，再合并到 GitHub `main` 分支。当前公开页在 Worker 授权完成前继续保留原演示版本，避免发布不可用页面。
+真实密钥只在 Vercel 控制台填写，不能写入源码或提交到 GitHub。后端部署后，把 Vercel 地址写入 `docs/app.js` 与 `app/page.tsx` 的 `API_BASE_URL`，完成真实调用验证后再合并到 `main`。当前公开页在后端实测通过前继续保留原演示版本，避免发布不可用页面。

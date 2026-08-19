@@ -1,4 +1,6 @@
-const MODEL = "glm-4.7-flash";
+const DEEPSEEK_MODEL = "deepseek-v4-pro";
+const DEEPSEEK_ENDPOINT = "https://api.deepseek.com/chat/completions";
+const ZHIPU_MODEL = "glm-4.7-flash";
 const ZHIPU_ENDPOINT = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
 
 export const ALLOWED_ORIGINS = new Set([
@@ -115,22 +117,48 @@ function parseModelContent(data) {
   return JSON.parse(clean);
 }
 
-export async function runZhipu(messages, maxTokens) {
-  const apiKey = process.env.ZHIPU_API_KEY;
-  if (!apiKey) {
-    const error = new Error("服务端尚未配置 ZHIPU_API_KEY");
+export function resolveModelProvider(env = process.env) {
+  if (typeof env.DEEPSEEK_API_KEY === "string" && env.DEEPSEEK_API_KEY.trim()) {
+    return {
+      id: "deepseek",
+      label: "DeepSeek",
+      model: DEEPSEEK_MODEL,
+      endpoint: DEEPSEEK_ENDPOINT,
+      apiKey: env.DEEPSEEK_API_KEY.trim(),
+    };
+  }
+  if (typeof env.ZHIPU_API_KEY === "string" && env.ZHIPU_API_KEY.trim()) {
+    return {
+      id: "zhipu",
+      label: "智谱",
+      model: ZHIPU_MODEL,
+      endpoint: ZHIPU_ENDPOINT,
+      apiKey: env.ZHIPU_API_KEY.trim(),
+    };
+  }
+  return null;
+}
+
+export function activeModel(env = process.env) {
+  return resolveModelProvider(env)?.model ?? DEEPSEEK_MODEL;
+}
+
+export async function runModel(messages, maxTokens) {
+  const provider = resolveModelProvider();
+  if (!provider) {
+    const error = new Error("服务端尚未配置 AI API Key");
     error.statusCode = 503;
     throw error;
   }
 
-  const upstream = await fetch(ZHIPU_ENDPOINT, {
+  const upstream = await fetch(provider.endpoint, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${provider.apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: provider.model,
       messages,
       thinking: { type: "disabled" },
       response_format: { type: "json_object" },
@@ -142,7 +170,7 @@ export async function runZhipu(messages, maxTokens) {
 
   const data = await upstream.json().catch(() => ({}));
   if (!upstream.ok) {
-    const error = new Error(`智谱接口返回 ${upstream.status}`);
+    const error = new Error(`${provider.label}接口返回 ${upstream.status}`);
     error.statusCode = upstream.status === 429 ? 429 : 502;
     throw error;
   }
@@ -276,7 +304,7 @@ function labelForScore(score) {
 export async function analyzeText(text) {
   const sentences = splitSentences(text);
   const numberedSentences = sentences.map((sentence, id) => ({ id, text: sentence }));
-  const modelData = await runZhipu(
+  const modelData = await runModel(
     [
       {
         role: "system",
@@ -343,12 +371,12 @@ evidence中的短语必须从原文逐字摘取。concrete_anchors排除日期�
       };
     }),
     questions,
-    model: MODEL,
+    model: activeModel(),
   };
 }
 
 export async function enrichText(text, answers) {
-  const modelData = await runZhipu(
+  const modelData = await runModel(
     [
       {
         role: "system",
@@ -377,7 +405,7 @@ export async function enrichText(text, answers) {
     usedDetails: Array.isArray(modelData.used_details)
       ? modelData.used_details.slice(0, 2).map((item) => cleanText(item, 120))
       : [],
-    model: MODEL,
+    model: activeModel(),
   };
 }
 

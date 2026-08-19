@@ -18,12 +18,13 @@
 ## 技术结构
 
 - `docs/`：GitHub Pages 使用的纯静态手机端页面；
-- `zhipu-api/`：部署在 Vercel 的智谱 API 后端；
+- `zhipu-api/`：部署在 Vercel 的 AI API 后端（目录名为历史命名）；
 - `app/`：React/Vinext 开发版本；
-- AI 模型：`glm-4.7-flash`；
+- AI 主模型：`deepseek-v4-pro`，关闭思考模式以降低等待；
+- 安全兜底：未配置 DeepSeek Key 时继续使用现有 `glm-4.7-flash`；
 - API：`POST /api/analyze` 和 `POST /api/enrich`。
 
-浏览器中不存放 API Key。正文会经 Vercel 函数发送到智谱完成本次推理，应用代码不把正文写入数据库，响应也明确禁止缓存。
+浏览器中不存放 API Key。正文会经 Vercel 函数发送到当前模型供应商完成本次推理，应用代码不把正文写入数据库，响应也明确禁止缓存。
 
 ## 本地验证
 
@@ -42,10 +43,10 @@ node --check zhipu-api/lib/human-made.js
 - https://biaobiao101111.github.io/human-made-h5/
 - https://zhipu-api.vercel.app/api/health
 
-AI 后端以 `zhipu-api/` 为 Vercel 项目根目录，环境变量名称固定为：
+AI 后端以 `zhipu-api/` 为 Vercel 项目根目录。DeepSeek 环境变量名称固定为：
 
 ```bash
-ZHIPU_API_KEY
+DEEPSEEK_API_KEY
 ```
 
-真实密钥只在 Vercel 控制台填写，不能写入源码或提交到 GitHub。线上后端已完成真实调用验证，前端通过 `https://zhipu-api.vercel.app/api` 请求服务。免费模型短时间连续调用可能返回 429，页面会提示用户稍后再试。
+真实密钥只在 Vercel 控制台填写，不能写入源码、聊天或提交到 GitHub。现有 `ZHIPU_API_KEY` 可以保留为未配置 DeepSeek 时的兜底；一旦 `DEEPSEEK_API_KEY` 存在，所有新请求优先使用 `deepseek-v4-pro`。前端继续通过 `https://zhipu-api.vercel.app/api` 请求服务，无需修改 GitHub Pages 地址。

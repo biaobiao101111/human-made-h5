@@ -1,4 +1,4 @@
-const DEEPSEEK_MODEL = "deepseek-v4-pro";
+const DEEPSEEK_MODEL = "deepseek-v4-flash";
 const DEEPSEEK_ENDPOINT = "https://api.deepseek.com/chat/completions";
 const ZHIPU_MODEL = "glm-4.7-flash";
 const ZHIPU_ENDPOINT = "https://open.bigmodel.cn/api/paas/v4/chat/completions";

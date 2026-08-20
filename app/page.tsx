@@ -1,5 +1,8 @@
 "use client";
 
+/* The same small, user-supplied raster logo is shared with the static GitHub Pages build. */
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useRef, useState } from "react";
 
 const API_BASE_URL = "https://zhipu-api.vercel.app/api";
@@ -248,8 +251,13 @@ export default function Home() {
     <main className="app-shell">
       <section className="phone-page" aria-label="含人量检测">
         <header className="brand">
-          <div className="puqi-mark" aria-label="浦柒 AI 观察">浦柒 AI观察</div>
-          <h1>含人量检测</h1><p>HUMAN MADE</p>
+          <div className="brand-logo" aria-label="HumanMade 品牌标志">
+            <img src="/human-made-logo.jpg" width="1280" height="1280" alt="HumanMade 指纹钢笔品牌标志" />
+          </div>
+          <div className="brand-title-line">
+            <h1>含人量检测</h1>
+            <div className="puqi-mark" aria-label="浦柒 AI 观察">浦柒 AI观察</div>
+          </div>
         </header>
 
         {phase === "input" && (
